@@ -1,0 +1,41 @@
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: #11151d;
+  color: #edf3ff;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+}
+
+main {
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+  padding: 1.25rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.1rem, 2.2vw, 2rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#sketch-holder {
+  width: min(90vw, 820px);
+  border: 3px solid rgba(165, 183, 255, 0.8);
+  border-radius: 18px;
+  box-shadow: 0 0 25px rgba(105, 132, 255, 0.35);
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
