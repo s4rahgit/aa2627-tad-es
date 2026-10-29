@@ -1,63 +1,86 @@
-const orbCount = 12;
-const ringRadius = 170;
-const waveAmplitude = 36;
+const larghezzaCanvas = 800
+const altezzaCanvas = 600
+const diametroStellaIniziale = 50
+const distanzaTraStelle = 4
+const diametroMinimoStella = 1
+const riduzioneDiametroStella = 0.5
+const numeroPunteStella = 5
+const proporzioneRaggioInterno = 0.45
+const probabilitaCambioTono = 0.02
+const massimoTono = 360
+const saturazioneColore = 100
+const luminositaColore = 40
+const grigioContorno = 100
+const grigioSfondo = 20
 
-let orbs = [];
+let tono
+let ultimaStellaX
+let ultimaStellaY
+let diametroStellaCorrente
+let mouseEraPremuto = false
 
-function setup() {
-  const canvas = createCanvas(900, 600);
-  canvas.parent('sketch-holder');
-  colorMode(HSB, 360, 100, 100, 100);
-  noStroke();
-
-  for (let i = 0; i < orbCount; i++) {
-    orbs.push({
-      angle: (TWO_PI / orbCount) * i,
-      size: random(18, 42),
-      offset: random(30, 120),
-      hue: 190 + random(-25, 30),
-      sat: 65 + random(20),
-      bri: 70 + random(20),
-      speed: random(0.005, 0.015),
-    });
-  }
+function setup () {
+  createCanvas(larghezzaCanvas, altezzaCanvas).parent('sketch-holder')
+  colorMode(HSL)
+  tono = random(massimoTono)
+  background(grigioSfondo)
 }
 
-function draw() {
-  background(220, 30, 12);
+function disegnaStella (x, y, diametro) {
+  const raggioEsterno = diametro / 2
+  const raggioInterno = raggioEsterno * proporzioneRaggioInterno
+  const numeroVertici = numeroPunteStella * 2
 
-  const centerX = width * 0.5;
-  const centerY = height * 0.5;
-
-  for (let i = 0; i < 7; i++) {
-    const y = height * 0.15 + i * 75;
-    fill(210, 45, 80, 18);
-    ellipse(centerX, y, 580, 90 + i * 12);
+  beginShape()
+  for (let i = 0; i < numeroVertici; i++) {
+    const angolo = -HALF_PI + i * TWO_PI / numeroVertici
+    const raggio = i % 2 === 0 ? raggioEsterno : raggioInterno
+    vertex(x + cos(angolo) * raggio, y + sin(angolo) * raggio)
   }
+  endShape(CLOSE)
+}
 
-  for (let i = 0; i < orbs.length; i++) {
-    const orb = orbs[i];
-    const wave = sin(frameCount * orb.speed * 40 + orb.angle * 6) * waveAmplitude;
-    const x = centerX + cos(orb.angle + frameCount * orb.speed * 2) * (ringRadius + orb.offset + wave);
-    const y = centerY + sin(orb.angle + frameCount * orb.speed * 2.4) * (ringRadius * 0.82 + wave * 0.4);
+function draw () {
+  stroke(grigioContorno)
 
-    fill(orb.hue, orb.sat, orb.bri, 85);
-    ellipse(x, y, orb.size, orb.size);
+  if (mouseIsPressed) {
+    if (!mouseEraPremuto) {
+      diametroStellaCorrente = diametroStellaIniziale
+      mouseEraPremuto = true
+    }
+
+    const x = constrain(mouseX, diametroStellaIniziale / 2, width - diametroStellaIniziale / 2)
+    const y = constrain(mouseY, diametroStellaIniziale / 2, height - diametroStellaIniziale / 2)
+
+    if (ultimaStellaX === undefined) {
+      ultimaStellaX = x
+      ultimaStellaY = y
+      fill(tono, saturazioneColore, luminositaColore)
+      disegnaStella(x, y, diametroStellaCorrente)
+    } else {
+      const distanza = dist(ultimaStellaX, ultimaStellaY, x, y)
+      const numeroStelle = floor(distanza / distanzaTraStelle)
+      const partenzaX = ultimaStellaX
+      const partenzaY = ultimaStellaY
+
+      for (let i = 1; i <= numeroStelle; i++) {
+        const avanzamento = (i * distanzaTraStelle) / distanza
+        ultimaStellaX = partenzaX + (x - partenzaX) * avanzamento
+        ultimaStellaY = partenzaY + (y - partenzaY) * avanzamento
+        fill(tono, saturazioneColore, luminositaColore)
+        disegnaStella(ultimaStellaX, ultimaStellaY, diametroStellaCorrente)
+        if (random() < probabilitaCambioTono) {
+          tono = random(massimoTono)
+        }
+        diametroStellaCorrente = max(
+          diametroMinimoStella,
+          diametroStellaCorrente - riduzioneDiametroStella
+        )
+      }
+    }
+  } else {
+    mouseEraPremuto = false
+    ultimaStellaX = undefined
+    ultimaStellaY = undefined
   }
-
-  fill(32, 82, 92, 60);
-  ellipse(centerX, centerY, 180, 180);
-
-  fill(42, 74, 90, 80);
-  ellipse(centerX, centerY, 220, 220);
-
-  fill(42, 90, 92, 90);
-  triangle(
-    centerX, centerY - 60,
-    centerX - 70, centerY + 60,
-    centerX + 70, centerY + 60
-  );
-
-  fill(52, 35, 94, 75);
-  arc(centerX, centerY + 80, 220, 120, 0, PI);
 }
