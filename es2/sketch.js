@@ -5,11 +5,24 @@
 //   del pulsante di reset perfettamente calibrata sulle dimensioni effettive (20x20).
 
 // --- VARIABILI GLOBALI E PARAMETRI ---
-let canvasWidth = 800;
+let canvasWidth = 700;
 let canvasHeight = 600;
+let referenceCanvasWidth = 800;
+let horizontalScale = canvasWidth / referenceCanvasWidth;
+
+let showInteractionGuide = true;
+let interactionGuideWidth = 520;
+let interactionGuideHeight = 230;
+let interactionGuidePadding = 24;
+let interactionGuideTitleSize = 22;
+let interactionGuideTextSize = 16;
+let interactionGuideLineHeight = 24;
+let interactionGuideToggleKey = 'h';
 
 // Fattore di interazione: sale molto lentamente (sul blu), scende rapidamente (quando esci)
 let interactionFactor = 0;
+let maximumColorVariationMultiplier = 2;
+let colorVariationMultiplier = 1;
 
 // Valori target e correnti per ogni figura per un'evoluzione cromatica morbida e coerente
 let targetShiftRed = 0, currentShiftRed = 0;
@@ -24,6 +37,7 @@ let targetShiftDark = 0, currentShiftDark = 0;
 
 // Colori dinamici per i quadratini piccoli
 let smallColor1, smallColor2, smallColor3;
+let smallColorsAreDynamic = false;
 
 // Flag per l'attivazione dei movimenti e delle variazioni dimensionali (tramite click sul marrone)
 let isMoving = false;
@@ -52,25 +66,27 @@ function setup() {
 function draw() {
   // --- VERIFICA PASSAGGIO CURSORE SUL RETTANGOLO BLU ---
   let blueBlock1X = 310, blueBlock1Y = 215, blueBlock1W = 120, blueBlock1H = 80;
-  let isOverBlue = (abs(mouseX - blueBlock1X) < blueBlock1W / 2 && abs(mouseY - blueBlock1Y) < blueBlock1H / 2);
+  let sketchMouseX = mouseX / horizontalScale;
+  let isOverBlue = (abs(sketchMouseX - blueBlock1X) < blueBlock1W / 2 && abs(mouseY - blueBlock1Y) < blueBlock1H / 2);
 
   let targetFactor = isOverBlue ? 1.0 : 0.0;
   
   // Velocità asimmetrica: salita molto lenta sul blu, discesa rapida all'uscita
   let lerpSpeed = isOverBlue ? 0.003 : 0.08;
   interactionFactor = lerp(interactionFactor, targetFactor, lerpSpeed); 
+  colorVariationMultiplier = lerp(1, maximumColorVariationMultiplier, interactionFactor);
 
   // Aggiornamento cromatico controllato e coerente
   if (isOverBlue && frameCount % 120 === 0) {
-    targetShiftRed = random(-30, 30);
-    targetShiftBlue1 = random(-25, 25);
-    targetShiftBlue2 = random(-25, 25);
-    targetShiftAzzurro = random(-20, 20);
-    targetShiftYellow1 = random(-30, 30);
-    targetShiftYellow2 = random(-30, 30);
-    targetShiftBrown1 = random(-15, 15);
-    targetShiftBrown2 = random(-15, 15);
-    targetShiftDark = random(-20, 20);
+    targetShiftRed = random(-30, 30) * colorVariationMultiplier;
+    targetShiftBlue1 = random(-25, 25) * colorVariationMultiplier;
+    targetShiftBlue2 = random(-25, 25) * colorVariationMultiplier;
+    targetShiftAzzurro = random(-20, 20) * colorVariationMultiplier;
+    targetShiftYellow1 = random(-30, 30) * colorVariationMultiplier;
+    targetShiftYellow2 = random(-30, 30) * colorVariationMultiplier;
+    targetShiftBrown1 = random(-15, 15) * colorVariationMultiplier;
+    targetShiftBrown2 = random(-15, 15) * colorVariationMultiplier;
+    targetShiftDark = random(-20, 20) * colorVariationMultiplier;
   } else if (!isOverBlue && interactionFactor < 0.01) {
     targetShiftRed = 0;
     targetShiftBlue1 = 0;
@@ -81,6 +97,9 @@ function draw() {
     targetShiftBrown1 = 0;
     targetShiftBrown2 = 0;
     targetShiftDark = 0;
+    if (smallColorsAreDynamic) {
+      updateOriginalSmallColors();
+    }
   }
 
   // Interpolazione continua dei colori
@@ -98,6 +117,8 @@ function draw() {
   // --- SFONDO FISSO (Mantiene rigorosamente il colore originale ocra/sabbia) ---
   background(38, 28, 76);
 
+  push();
+  scale(horizontalScale, 1);
   rectMode(CENTER);
   noStroke();
 
@@ -173,7 +194,7 @@ function draw() {
 
   // --- 5. QUADRATINI PICCOLI ---
   if (interactionFactor > 0.05 && frameCount % 120 === 0) {
-    updateCoherentSmallColors();
+    updateCoherentSmallColors(colorVariationMultiplier);
   }
 
   fill(smallColor1);
@@ -187,20 +208,77 @@ function draw() {
 
   fill((12 + currentShiftRed * 0.5 + 360) % 360, 26, 92);
   rect(530 - smallChaos, 400 + smallChaos, 65, 40);
+
+  pop();
+
+  if (showInteractionGuide) {
+    cursor('default');
+  } else {
+    let isOverBrown = abs(sketchMouseX - (brown1X + brownDrift)) < brown1W / 2 &&
+      abs(mouseY - brown1Y) < brown1H / 2;
+    let isOverReset = abs(sketchMouseX - currentResetX) < 10 &&
+      abs(mouseY - currentResetY) < 10;
+
+    if (isOverBrown || isOverReset) {
+      cursor('pointer');
+    } else if (isOverBlue) {
+      cursor('crosshair');
+    } else {
+      cursor('default');
+    }
+  }
+
+  if (showInteractionGuide) {
+    drawInteractionGuide();
+  }
+}
+
+function drawInteractionGuide() {
+  let guideX = (canvasWidth - interactionGuideWidth) / 2;
+  let guideY = (canvasHeight - interactionGuideHeight) / 2;
+
+  push();
+  rectMode(CORNER);
+  noStroke();
+  fill(0, 0, 5, 92);
+  rect(guideX, guideY, interactionGuideWidth, interactionGuideHeight, 12);
+
+  fill(0, 0, 100);
+  textAlign(LEFT, TOP);
+  textSize(interactionGuideTitleSize);
+  text('INTERAZIONI', guideX + interactionGuidePadding, guideY + interactionGuidePadding);
+
+  textSize(interactionGuideTextSize);
+  textLeading(interactionGuideLineHeight);
+  text(
+    'Mirino sul blu: i colori cambiano e si intensificano\n' +
+    'finché resti sull’area.\n' +
+    'Mano sul marrone: clicca per animare forme e dimensioni.\n' +
+    'Mano sul quadratino chiaro: ripristina.\n' +
+    'Premi H per chiudere o riaprire la guida.',
+    guideX + interactionGuidePadding,
+    guideY + interactionGuidePadding + interactionGuideTitleSize + 12
+  );
+  pop();
 }
 
 // --- GESTIONE DEI CLICK DEL MOUSE ---
 function mousePressed() {
+  if (showInteractionGuide) {
+    return;
+  }
+
   let brown1X = 360, brown1Y = 105, brown1W = 50, brown1H = 95;
 
   // 1. Clic sul rettangolo marrone: attiva/disattiva i movimenti e le variazioni dimensionali
-  let clickedBrown = (abs(mouseX - brown1X) < brown1W / 2 && abs(mouseY - brown1Y) < brown1H / 2);
+  let sketchMouseX = mouseX / horizontalScale;
+  let clickedBrown = (abs(sketchMouseX - (brown1X + brownDrift)) < brown1W / 2 && abs(mouseY - brown1Y) < brown1H / 2);
   if (clickedBrown) {
     isMoving = !isMoving; 
   }
 
   // 2. Clic sul piccolo quadrato chiaro: hitbox rigorosamente commisurata alla dimensione 20x20 (raggio 10)
-  let clickedReset = (abs(mouseX - currentResetX) < 10 && abs(mouseY - currentResetY) < 10);
+  let clickedReset = (abs(sketchMouseX - currentResetX) < 10 && abs(mouseY - currentResetY) < 10);
   if (clickedReset) {
     isMoving = false;
     interactionFactor = 0;
@@ -229,16 +307,37 @@ function mousePressed() {
   }
 }
 
+function keyPressed() {
+  if (key.toLowerCase() === interactionGuideToggleKey) {
+    showInteractionGuide = !showInteractionGuide;
+    return false;
+  }
+}
+
 // --- COLORI ORIGINALI PER I QUADRATINI PICCOLI ---
 function updateOriginalSmallColors() {
   smallColor1 = color(6, 35, 90);  // Rosa chiaro originale
   smallColor2 = color(35, 40, 40); // Nero/grigio originale
   smallColor3 = color(4, 38, 88);  // Rosa/pesca originale
+  smallColorsAreDynamic = false;
 }
 
 // --- VARIAZIONE CROMATICA COERENTE PER I QUADRATINI ---
-function updateCoherentSmallColors() {
-  smallColor1 = color((6 + random(-15, 15) + 360) % 360, random(30, 45), random(85, 95));
-  smallColor2 = color((35 + random(-15, 15) + 360) % 360, random(35, 50), random(35, 50));
-  smallColor3 = color((4 + random(-15, 15) + 360) % 360, random(30, 45), random(85, 95));
+function updateCoherentSmallColors(variationMultiplier) {
+  smallColorsAreDynamic = true;
+  smallColor1 = color(
+    (6 + random(-15, 15) * variationMultiplier + 360) % 360,
+    random(37.5 - 7.5 * variationMultiplier, 37.5 + 7.5 * variationMultiplier),
+    random(90 - 5 * variationMultiplier, 90 + 5 * variationMultiplier)
+  );
+  smallColor2 = color(
+    (35 + random(-15, 15) * variationMultiplier + 360) % 360,
+    random(42.5 - 7.5 * variationMultiplier, 42.5 + 7.5 * variationMultiplier),
+    random(42.5 - 7.5 * variationMultiplier, 42.5 + 7.5 * variationMultiplier)
+  );
+  smallColor3 = color(
+    (4 + random(-15, 15) * variationMultiplier + 360) % 360,
+    random(37.5 - 7.5 * variationMultiplier, 37.5 + 7.5 * variationMultiplier),
+    random(90 - 5 * variationMultiplier, 90 + 5 * variationMultiplier)
+  );
 }
