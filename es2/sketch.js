@@ -5,14 +5,14 @@
 //   del pulsante di reset perfettamente calibrata sulle dimensioni effettive (20x20).
 
 // --- VARIABILI GLOBALI E PARAMETRI ---
-let canvasWidth = 700;
+let canvasWidth = 600;
 let canvasHeight = 600;
 let referenceCanvasWidth = 800;
 let horizontalScale = canvasWidth / referenceCanvasWidth;
 
 let showInteractionGuide = true;
 let interactionGuideWidth = 520;
-let interactionGuideHeight = 230;
+let interactionGuideHeight = 190;
 let interactionGuidePadding = 24;
 let interactionGuideTitleSize = 22;
 let interactionGuideTextSize = 16;
@@ -21,7 +21,7 @@ let interactionGuideToggleKey = 'h';
 
 // Fattore di interazione: sale molto lentamente (sul blu), scende rapidamente (quando esci)
 let interactionFactor = 0;
-let maximumColorVariationMultiplier = 2;
+let maximumColorVariationMultiplier = 3.5;
 let colorVariationMultiplier = 1;
 
 // Valori target e correnti per ogni figura per un'evoluzione cromatica morbida e coerente
@@ -47,6 +47,10 @@ let redPulse = 1.0;
 let blueExtW = 120.0;
 let blueExtH = 80.0;
 let yellowScale = 1.0;
+let redPulseVariation = 0.12;
+let blueWidthVariation = 30;
+let blueHeightVariation = 22;
+let yellowScaleVariation = 0.22;
 let redMoveX = 0.0;
 let redMoveY = 0.0;
 let blueRot = 0.0;
@@ -129,10 +133,10 @@ function draw() {
   redMoveY = isMoving ? cos(t * 0.6) * 10 : 0;
   
   // Variazioni di estensione / dimensione attivate dal click sul marrone
-  redPulse = isMoving ? 1 + sin(t) * 0.08 : 1.0;
-  blueExtW = isMoving ? 120 + sin(t * 0.7) * 20 : 120.0; 
-  blueExtH = isMoving ? 80 + cos(t * 0.7) * 15 : 80.0;   
-  yellowScale = isMoving ? 1 + cos(t * 0.9) * 0.15 : 1.0; 
+  redPulse = isMoving ? 1 + sin(t) * redPulseVariation : 1.0;
+  blueExtW = isMoving ? 120 + sin(t * 0.7) * blueWidthVariation : 120.0; 
+  blueExtH = isMoving ? 80 + cos(t * 0.7) * blueHeightVariation : 80.0;   
+  yellowScale = isMoving ? 1 + cos(t * 0.9) * yellowScaleVariation : 1.0; 
 
   blueRot = isMoving ? sin(t * 0.5) * 0.08 : 0; 
   brownDrift = isMoving ? cos(t * 0.4) * 12 : 0; 
@@ -240,10 +244,10 @@ function drawInteractionGuide() {
   push();
   rectMode(CORNER);
   noStroke();
-  fill(0, 0, 5, 92);
+  fill(18, 55, 24, 96);
   rect(guideX, guideY, interactionGuideWidth, interactionGuideHeight, 12);
 
-  fill(0, 0, 100);
+  fill(38, 28, 95);
   textAlign(LEFT, TOP);
   textSize(interactionGuideTitleSize);
   text('INTERAZIONI', guideX + interactionGuidePadding, guideY + interactionGuidePadding);
@@ -251,11 +255,10 @@ function drawInteractionGuide() {
   textSize(interactionGuideTextSize);
   textLeading(interactionGuideLineHeight);
   text(
-    'Mirino sul blu: i colori cambiano e si intensificano\n' +
-    'finché resti sull’area.\n' +
-    'Mano sul marrone: clicca per animare forme e dimensioni.\n' +
-    'Mano sul quadratino chiaro: ripristina.\n' +
-    'Premi H per chiudere o riaprire la guida.',
+    'Rettangolo blu: colori variabili finché ci resti sopra.\n' +
+    'Rettangolo marrone: clicca per animare le forme.\n' +
+    'Quadratino azzurro chiaro: clicca per ripristinare.\n' +
+    'H: mostra o nasconde la guida.',
     guideX + interactionGuidePadding,
     guideY + interactionGuidePadding + interactionGuideTitleSize + 12
   );
