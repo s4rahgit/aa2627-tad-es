@@ -3,7 +3,7 @@
 // Composizione: all'apertura la frase si legge su righe orizzontali al centro
 //   della tela. Cliccando sulla parola "spin", la frase si dispone in una
 //   spirale di orbite circolari, partendo dal centro con la parola "down";
-//   le lettere seguono l'arco della spirale.
+//   le lettere seguono l'arco della spirale con la curvatura del percorso.
 //   Lo sfondo diventa nero prima che le parole si accendano in ordine casuale;
 //   passando il cursore sulle parole, il loro colore neon cambia casualmente.
 //   Cliccando su "down", tutto torna gradualmente allo stato iniziale.
@@ -35,14 +35,9 @@ const fotogrammiTraAccensioni = 8;
 const dimensioneMinima = 10;
 const dimensioneMassima = 52;
 
-// curvatura dei caratteri: quasi dritti quelli interni, molto arcuati
-// quelli esterni, che devono seguire il tratto più ampio della spirale
-const curvaturaParolaInterna = 0.003;
-const curvaturaParolaEsterna = 0.012;
-
 // sopra 1 il contrasto fra interno ed esterno aumenta: le parole esterne
-// restano grandi e molto curve, quelle interne si riducono e si raddrizzano
-const esponenteEsterno = 1.3;
+// restano grandi e quelle interne si riducono
+const esponenteDimensione = 1.3;
 
 const velocitaMinima = 0.0015;
 const velocitaMassima = 0.004;
@@ -94,6 +89,7 @@ let frameCambioColore = [];
 let ritardiAccensione = [];
 let raggi = [];
 let scartiAngolari = [];
+let curvaturaSpirale = [];
 let dimensioni = [];
 let scaleDalCentro = [];
 let angoloSpirale = 0;
@@ -158,7 +154,7 @@ async function setup() {
       lerp(
         dimensioneMinima,
         dimensioneMassima,
-        pow(scalaDalCentro, esponenteEsterno)
+        pow(scalaDalCentro, esponenteDimensione)
       )
     );
   }
@@ -191,7 +187,42 @@ async function setup() {
       scartiAngolari[i + 1] + max(passoAngolare, passoNecessario);
   }
 
+  // la curvatura è misurata sul percorso: le parole lunghe non si piegano
+  // più del vortice che dovrebbero seguire
+  curvaturaSpirale = new Array(parole.length).fill(0);
+  for (let i = 1; i < parole.length - 1; i++) {
+    curvaturaSpirale[i] = curvaturaTrePunti(
+      puntoOrbita(i - 1),
+      puntoOrbita(i),
+      puntoOrbita(i + 1)
+    );
+  }
+  curvaturaSpirale[0] = curvaturaSpirale[1];
+  curvaturaSpirale[parole.length - 1] = curvaturaSpirale[parole.length - 2];
+
   disponiFraseIniziale();
+}
+
+function puntoOrbita(indice) {
+  return {
+    x: raggi[indice] * cos(scartiAngolari[indice]),
+    y: raggi[indice] * sin(scartiAngolari[indice])
+  };
+}
+
+// curvatura con segno della circonferenza che passa per tre punti vicini
+function curvaturaTrePunti(a, b, c) {
+  let x1 = b.x - a.x;
+  let y1 = b.y - a.y;
+  let x2 = c.x - b.x;
+  let y2 = c.y - b.y;
+  let doppiaArea = x1 * y2 - y1 * x2;
+  let lato1 = sqrt(x1 * x1 + y1 * y1);
+  let lato2 = sqrt(x2 * x2 + y2 * y2);
+  let lato3 = sqrt(
+    (c.x - a.x) * (c.x - a.x) + (c.y - a.y) * (c.y - a.y)
+  );
+  return (2 * doppiaArea) / (lato1 * lato2 * lato3);
 }
 
 // posiziona le parole su righe normali, andando a capo quando superano
@@ -389,15 +420,9 @@ function draw() {
     posizioniY.push(y);
     dimensioniAttuali.push(dimensione);
     rotazioni.push(rotazione);
-    // durante lo spostamento la curvatura cresce con progresso; le parole
-    // più esterne si arcuano di più per seguire il tratto largo della spirale
-    curvaturaParole.push(
-      -lerp(
-        curvaturaParolaInterna,
-        curvaturaParolaEsterna,
-        pow(scaleDalCentro[i], esponenteEsterno)
-      ) * progresso
-    );
+    // la curvatura cresce con progresso e arriva da quella misurata sulla
+    // spirale, così ogni parola segue il tratto che le compete
+    curvaturaParole.push(curvaturaSpirale[i] * progresso);
     mezzeLarghezze.push(fontWidth(parole[i]) / 2);
     mezzeAltezze.push(dimensione / 2);
     pop();
@@ -429,7 +454,6 @@ function draw() {
     ) {
       indiceHoverCorrente = i;
       paroleAccese[i] = true;
-      cursor('pointer');
       if (indiceHoverPrecedente !== i) {
         coloriPartenzaParole[i] = coloriParole[i];
         coloriObiettivoParole[i] = color(
